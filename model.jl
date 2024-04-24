@@ -60,13 +60,14 @@ function do_train(cnn::CNN,
     trainy::Any)
 	epoch_loss = 0.0
     for i=1:size(trainx, 3)
+        # println(i, " / ", size(trainx, 3))
         x = Constant(trainx[:, :, i])
         y = Constant(trainy[i, :])
         graph = build_graph(x, y, cnn)
 
 		epoch_loss += forward!(graph)
 		backward!(graph)
-        update_weights!(graph, 1e-2)
+        update_weights!(graph, 1e-4)
     end
     return epoch_loss / size(trainx, 3)
 end

@@ -9,19 +9,19 @@ compute!(node::Variable) = node.output
 
 
 pr(node::Any)=begin
-    println(typeof(node))
+    println("forward >> ",typeof(node))
 end
 
 pr(node::BroadcastedOperator)=begin
-    println(typeof(node), "   ", node.name, "   ", typeof(node.inputs), typeof(node.output))
+    println("forward >> ",typeof(node), "   ", node.name, "   ", typeof(node.inputs), "   ", typeof(node.output))
 end
 
 
 function compute!(node::Operator)
     inputs = [input.output for input in node.inputs]
-    pr(node)
+    # pr(node)
 
-    println(typeof(node), typeof(inputs))
+    # println("forward >> ",typeof(node), typeof(inputs), "   size: ", size(inputs))
     node.output = forward(node, inputs...)
     return node.output
 end

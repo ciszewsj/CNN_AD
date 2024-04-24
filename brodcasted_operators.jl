@@ -4,7 +4,7 @@ import LinearAlgebra: mul!, diagm
 import NNlib
 
 reshape(x::GraphNode, new_size::GraphNode) = let 
-    println(x.name, " = ", x.size, ">>>", new_size.name)
+    # println(x.name, " = ", x.size, ">>>", new_size.name)
     BroadcastedOperator(reshape, x, new_size)
 end
 
@@ -90,6 +90,7 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
 cross_entropy_loss(y_hat::GraphNode, y::GraphNode) = BroadcastedOperator(cross_entropy_loss, y_hat, y)
 forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) =
     let
+        println(y_hat, " <> ", y)
         y_hat = y_hat .- maximum(y_hat)
         y_hat = exp.(y_hat) ./ sum(exp.(y_hat))
         loss = sum(log.(y_hat) .* y) * -1.0
@@ -135,9 +136,28 @@ backward(::BroadcastedOperator{typeof(convolution)}, x, kernel, g) =
         return tuple(input_gradient, kernel_gradient)
     end
 
+linear(x::GraphNode) = BroadcastedOperator(linear, x)
+forward(::BroadcastedOperator{typeof(linear)}, x) = x
+backward(::BroadcastedOperator{typeof(linear)}, x, g) = tuple(g)
+
+
 dense(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dense, x, w, b)
-forward(::BroadcastedOperator{typeof(dense)}, x, w, b) = w * x .+ b
-backward(::BroadcastedOperator{typeof(dense)}, x, w, b, g) = tuple(w' * g, g * x', g)
+forward(::BroadcastedOperator{typeof(dense)}, x, w, b) = let 
+    println("w: ",typeof(w), " x: ", typeof(x))
+    println("w: ",size(w), " x: ", size(x))
+    # println("w",w)
+    # println("x",x)
+    # a,b = size(w)
+    # x = reshape(x, b, :)
+    w * x
+end
+backward(::BroadcastedOperator{typeof(dense)}, x, w, b, g) = let
+    # println("x: ", typeof(x), "w: ", typeof(w), "b: ", typeof(b), "g: ", typeof(g))
+    # println("x: ", size(x), "w: ", size(w), "b: ", size(b), "g: ", size(g))
+    # a,b = size(w)
+    # x = reshape(x, b, :)
+    tuple(w' * g, g * x', g)
+end
     
 
 maxpool2d(x::GraphNode) = BroadcastedOperator(maxpool2d, x)

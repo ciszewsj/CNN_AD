@@ -8,7 +8,7 @@ update!(node::GraphNode, gradient) = begin
         if isnothing(node.__gradient)
             node.__gradient = gradient
         else
-            node.__gradient += gradient
+            node.__gradient .+= gradient
         end
     end
 end

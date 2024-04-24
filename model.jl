@@ -15,7 +15,7 @@ function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
     for node in graph
         if isa(node, Variable) && hasproperty(node, :__gradient)
             node.__gradient ./= batch_size
-            node.output -= lr * node.gradient
+            node.output -= lr * node.__gradient
             node.__gradient .= 0
         end
     end
@@ -36,7 +36,7 @@ end
 function do_train(cnn::CNN,
     trainx::Any,
     trainy::Any,
-    batch_size = 1)
+    batch_size)
 	epoch_loss = 0.0
     for i=1:size(trainx, 3)
         x = Constant(trainx[:, :, i])
@@ -45,10 +45,9 @@ function do_train(cnn::CNN,
 
 		epoch_loss += forward!(graph)
 		backward!(graph)
-        # if i % batch_size == 0
+        if i % batch_size == 0
             update_weights!(graph, 1e-4, batch_size)
-            # println(cnn.wb2)
-        # end
+        end
     end
     return epoch_loss / size(trainx, 3)
 end
@@ -59,7 +58,6 @@ function do_test(cnn::CNN,
     y_data::Any)
     global poprawne
     global suma2
-    println("dupa ", poprawne, suma2)
     poprawne = 0
     suma2 = 0
     for i=1:size(x_data, 3)
@@ -72,7 +70,7 @@ function do_test(cnn::CNN,
 end
 
 
-function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any)
+function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, batch_size)
 	wk1 = Variable(create_kernel(1, 6))
 
     k1 =  Variable(randn(84, 13*13*6), name = "wh")
@@ -86,7 +84,7 @@ function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any)
     i = 1
 
     for i=1:3
-        epoch_loss = do_train(c, x_train, y_train)
+        epoch_loss = do_train(c, x_train, y_train, batch_size)
         println("Epoch " ,i," : ", epoch_loss)
     end
     println("TRAIN DATA")

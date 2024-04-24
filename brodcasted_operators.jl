@@ -1,6 +1,13 @@
 include("structure.jl")
-import Base: ^, sin, sum, *, +, -, max
+import Base: ^, sin, sum, *, +, -, max, reshape
 import LinearAlgebra: mul!, diagm
+import NNlib
+
+reshape(x::GraphNode, new_size::GraphNode) = let 
+    println(x.name, " = ", x.size, ">>>", new_size.name)
+    BroadcastedOperator(reshape, x, new_size)
+end
+
 
 ^(x::GraphNode, n::Number) = BroadcastedOperator(^, x, n)
 forward(::BroadcastedOperator{typeof(^)}, x, n) = x .^ n
@@ -13,8 +20,8 @@ backward(::BroadcastedOperator{typeof(mul!)}, A, x, g) = tuple(g * x', A' * g)
 
 
 relu(x::GraphNode) = BroadcastedOperator(relu, x)
-forward(::BroadcastedOperator{typeof(relu)}, x) = max.(x, 0)
-backward(::BroadcastedOperator{typeof(relu)}, x, g) = tuple(g .* isless.(x, 0))
+forward(::BroadcastedOperator{typeof(relu)}, x) = return max.(x, zero(x))
+backward(::BroadcastedOperator{typeof(relu)}, x, g) = return tuple(g .* (x .> 0))
 
 
 logistic(x::GraphNode) = BroadcastedOperator(logistic, x)
@@ -23,8 +30,8 @@ backward(::BroadcastedOperator{typeof(logistic)}, x, g) = tuple(g .* exp.(x) ./ 
 
 
 flatten(x::GraphNode) = BroadcastedOperator(flatten, x)
-forward(::BroadcastedOperator{typeof(flatten)}, x) = reshape(x, 1, :)
-backward(::BroadcastedOperator{typeof(flatten)}, x, g) = (reshape(g, size(x)),)
+forward(::BroadcastedOperator{typeof(flatten)}, x) = reshape(x, length(x))
+backward(::BroadcastedOperator{typeof(flatten)}, x, g) = tuple(reshape(g, size(x)))
 
 
 Base.Broadcast.broadcasted(*, x::GraphNode, y::GraphNode) = BroadcastedOperator(*, x, y)
@@ -80,104 +87,58 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
     end
 
 
-convolution(x::GraphNode, w::GraphNode) = BroadcastedOperator(convolution, x, w)
-
-function forward(::BroadcastedOperator{typeof(convolution)}, x, w)
-    # default values 
-    # NOTE: Should be same as in backward
-    padding = 0
-    stride = 1
-    # get dimensions
-    (H, W, C, _) = size(x)
-    (FH, FW, _, K) = size(w)
-
-    # calculate output dimensions
-    out_h = Int(floor((H + 2 * padding - FH) / stride)) + 1
-    out_w = Int(floor((W + 2 * padding - FW) / stride)) + 1
-
-    # pad input
-    p = padding
-    x_pad = zeros(H + 2p, W + 2p, C)
-    x_pad[p+1:end-p, p+1:end-p, :] = x
-
-    # initialize output
-    # NOTE!: this is a 4D array, but we only use the first 3 dimensions
-    out = zeros(out_h, out_w, K, 1)
-
-    # perform convolution
-    for i ∈ 1:out_h
-        for j ∈ 1:out_w
-            # get receptive field
-            r_field =
-                x_pad[(i-1)*stride+1:(i-1)*stride+FH, (j-1)*stride+1:(j-1)*stride+FW, :, :]
-
-            # flatten receptive field and weights
-            r_field_flat = reshape(r_field, FH * FW * C, :)
-            w_flat = reshape(w, FH * FW * C, K)
-
-            # calculate output for this location
-            out[i, j, :] = sum(w_flat .* r_field_flat, dims = 1)
-        end
+cross_entropy_loss(y_hat::GraphNode, y::GraphNode) = BroadcastedOperator(cross_entropy_loss, y_hat, y)
+forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) =
+    let
+        y_hat = y_hat .- maximum(y_hat)
+        y_hat = exp.(y_hat) ./ sum(exp.(y_hat))
+        loss = sum(log.(y_hat) .* y) * -1.0
+        return loss
     end
-    return out
-end
-
-function backward(::BroadcastedOperator{typeof(convolution)}, x, w, g)
-    # default values 
-    # NOTE: Should be same as in forward
-    padding = 0
-    stride = 1
-
-    # get dimensions
-    (H, W, C, _) = size(x)
-    (FH, FW, _, K) = size(w)
-
-    # calculate output dimensions
-    out_h = Int(floor((H + 2 * padding - FH) / stride)) + 1
-    out_w = Int(floor((W + 2 * padding - FW) / stride)) + 1
-
-    # pad input
-    p = padding
-    x_pad = zeros(H + 2p, W + 2p, C)
-    x_pad[p+1:end-p, p+1:end-p, :] = x
-
-    # initialize gradients
-    gx_pad = zeros(H + 2p, W + 2p, C)
-    gw = zeros(size(w))
-
-    # perform backward pass
-    for i ∈ 1:out_h
-        for j ∈ 1:out_w
-            # get receptive field
-            r_field =
-                x_pad[(i-1)*stride+1:(i-1)*stride+FH, (j-1)*stride+1:(j-1)*stride+FW, :, :]
-
-            # flatten receptive field and weights
-            r_field_flat = reshape(r_field, FH * FW * C, :)
-            w_flat = reshape(w, FH * FW * C, K)
-
-            # calculate gradients for this location
-            dout_local = reshape(g[i, j, :], K, 1)
-            field_dout_prod = r_field_flat * dout_local'
-            field_dout_prod = reshape(field_dout_prod, FH, FW, C, K)
-            gw += field_dout_prod
-            flat_dout_prod = w_flat * dout_local
-            flat_dout_prod = reshape(flat_dout_prod, FH, FW, C, :)
-            gx_pad[(i-1)*stride+1:(i-1)*stride+FH, (j-1)*stride+1:(j-1)*stride+FW, :, :] +=
-                flat_dout_prod
-        end
+backward(node::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y, g) =
+    let
+        y_hat = y_hat .- maximum(y_hat)
+        y_hat = exp.(y_hat) ./ sum(exp.(y_hat))
+        return tuple(g .* (y_hat - y))
     end
 
-    # remove padding from gx
-    gx = gx_pad[p+1:end-p, p+1:end-p, :]
 
-    return tuple(gx, gw)
-end
+
+add_dim(x::Array) = reshape(x, (size(x)..., 1))
+
+
+convolution(x::GraphNode, kernel::GraphNode) = BroadcastedOperator(convolution, x, kernel)
+forward(::BroadcastedOperator{typeof(convolution)}, x, kernel) =
+    let
+        input = @view x[:, :, :, 1:1]
+        output = @view conv_op(input, kernel, flipped = true)[:, :, :, 1]
+        return output
+    end
+
+backward(::BroadcastedOperator{typeof(convolution)}, x, kernel, g) =
+    let
+        x = add_dim(x)
+        if size(g)[end] != 1
+            g = add_dim(g)
+        end
+
+        kernel_gradient = permutedims(
+            conv_op(
+                permutedims(x, (1, 2, 4, 3)),
+                permutedims(g, (1, 2, 4, 3)),
+                flipped = true,
+            ),
+            (1, 2, 4, 3),
+        )
+        input_gradient =
+            conv_op(g, permutedims(kernel, (1, 2, 4, 3)), pad = 2, flipped = false)
+        return tuple(input_gradient, kernel_gradient)
+    end
 
 dense(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dense, x, w, b)
 forward(::BroadcastedOperator{typeof(dense)}, x, w, b) = w * x .+ b
 backward(::BroadcastedOperator{typeof(dense)}, x, w, b, g) = tuple(w' * g, g * x', g)
-
+    
 
 maxpool2d(x::GraphNode) = BroadcastedOperator(maxpool2d, x)
 forward(node::BroadcastedOperator{typeof(maxpool2d)}, x) =

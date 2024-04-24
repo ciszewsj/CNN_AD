@@ -8,14 +8,17 @@ end
 mutable struct Variable <: GraphNode
     output :: Any
     gradient :: Any
+    name::String
+    Variable(output; name = "?") = new(output, nothing, name)
 end
 
 mutable struct ScalarOperator{F} <: Operator
     inputs :: Any
     output :: Any
     gradient :: Any
-    function ScalarOperator(fun, inputs...)
-		return new{typeof(fun)}(inputs, nothing, nothing)
+    name::String
+    function ScalarOperator(fun, inputs...; name = "?")
+		return new{typeof(fun)}(inputs, nothing, nothing, name)
 	end
 end
 
@@ -23,15 +26,18 @@ mutable struct BroadcastedOperator{F} <: Operator
     inputs :: Any
     output :: Any
     gradient :: Any
-    function BroadcastedOperator(fun, inputs...)
-       return new{typeof(fun)}(inputs, nothing, nothing) 
+    name::String
+    cache::Any
+    function BroadcastedOperator(fun, inputs...; name = "?")
+       return new{typeof(fun)}(inputs, nothing, nothing, name, nothing) 
     end
 end
 
 
 struct CNN
-    wd1::Variable,
-    wb1::Variable,
-    wd2::Variable,
-    wb2::Variable,
+    wk1
+    wd1
+    wb1
+    wd2
+    wb2
 end

@@ -1,16 +1,13 @@
 using MLDatasets: MNIST
+using Flux
 include("model.jl")
 
-train_data = MNIST(split=:train)
+conv_op = NNlib.conv
 
-x_train = train_data.features
-y_train = train_data.targets
-x_train = reshape(x_train, size(x_train, 1), size(x_train, 2), 1, size(x_train, 3))
-y_train = y_train .== 5
-x_train = x_train[:, :, :, 1:100]
-y_train = y_train[1:100, :]
+train_ds = MNIST(:train)
 
-x = x_train
-y = y_train
+x = reshape(train_ds.features, 28, 28, :)
+y  = Flux.onehotbatch(train_ds.targets, 0:9) 
 
-train_model(x, y, 0.1, 100, false)
+y = Int32.(Array(y))
+do_magic_trick(x, y)

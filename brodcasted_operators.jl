@@ -86,22 +86,24 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
         tuple(Jx' * g, Jy' * g)
     end
 
-poprawne = 0
-suma2 = 0
+# global poprawne = 0
+# global suma2 = 0
     
 
 cross_entropy_loss(y_hat::GraphNode, y::GraphNode) = BroadcastedOperator(cross_entropy_loss, y_hat, y)
 forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) =
     let
-        global suma2 += 1
+        global suma2
+        global poprawne
+        suma2 += 1
         if argmax(y_hat) == argmax(y)
-            global poprawne += 1
+            poprawne += 1
         end
         # println(y_hat, " <> ", y)
         y_hat = y_hat .- maximum(y_hat)
         y_hat = exp.(y_hat) ./ sum(exp.(y_hat))
         loss = sum(log.(y_hat) .* y) * -1.0
-        @printf("Accuracy: %.5f, Loss: %.5f\n", poprawne/suma2, loss)
+        # @printf("Accuracy: %.5f, Loss: %.5f\n", poprawne/suma2, loss)
         return loss
     end
 backward(node::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y, g) =

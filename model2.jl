@@ -21,6 +21,26 @@ function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
     end
 end
 
+poprawne = 0
+suma2 = 0
+function do_test(cnn::CNN2,
+    x_data::Any,
+    y_data::Any)
+    global poprawne
+    global suma2
+    println("dupa ", poprawne, suma2)
+    poprawne = 0
+    suma2 = 0
+    for i=1:size(x_data, 3)
+        x = Constant(x_data[:, :, i])
+        y = Constant(y_data[i, :])
+        graph = build_graph(x, y, cnn)
+		forward!(graph)
+    end
+    println("   ACCURACY : ", poprawne/suma2)
+end
+
+
 function build_graph(
     x::Constant,
     y::Constant,
@@ -48,7 +68,7 @@ function do_train(cnn::CNN2,
 		epoch_loss += forward!(graph)
 		backward!(graph)
         # if i % batch_size == 0
-            update_weights!(graph, 1e-2, batch_size)
+            update_weights!(graph, 1e-4, batch_size)
             # println(cnn.wb2)
         # end
     end
@@ -56,7 +76,7 @@ function do_train(cnn::CNN2,
 end
 
 
-function do_magic_trick_2(x_train::Any, y_train::Any)
+function do_magic_trick_2(x_train::Any, y_train::Any, x_test::Any, y_test::Any)
 	c1 = Variable(create_kernel(1, 6))
 	c2 = Variable(create_kernel(6, 16))
 
@@ -70,10 +90,15 @@ function do_magic_trick_2(x_train::Any, y_train::Any)
 
     i = 1
 
-    for i=1:200
+    for i=1:3
         epoch_loss = do_train(c, x_train, y_train)
         println("Epoch " ,i," : ", epoch_loss)
         global suma2 = 0
         global poprawne = 0
     end
+
+    println("TRAIN DATA")
+    do_test(c, x_train, y_train)
+    println("TEST DATA")
+    do_test(c, x_test, y_test)
 end

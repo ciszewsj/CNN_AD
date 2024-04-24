@@ -52,9 +52,27 @@ function do_train(cnn::CNN,
     end
     return epoch_loss / size(trainx, 3)
 end
+poprawne = 0
+suma2 = 0
+function do_test(cnn::CNN,
+    x_data::Any,
+    y_data::Any)
+    global poprawne
+    global suma2
+    println("dupa ", poprawne, suma2)
+    poprawne = 0
+    suma2 = 0
+    for i=1:size(x_data, 3)
+        x = Constant(x_data[:, :, i])
+        y = Constant(y_data[i, :])
+        graph = build_graph(x, y, cnn)
+		forward!(graph)
+    end
+    println("   ACCURACY : ", poprawne/suma2)
+end
 
 
-function do_magic_trick(x_train::Any, y_train::Any)
+function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any)
 	wk1 = Variable(create_kernel(1, 6))
 
     k1 =  Variable(randn(84, 13*13*6), name = "wh")
@@ -71,4 +89,8 @@ function do_magic_trick(x_train::Any, y_train::Any)
         epoch_loss = do_train(c, x_train, y_train)
         println("Epoch " ,i," : ", epoch_loss)
     end
+    println("TRAIN DATA")
+    do_test(c, x_train, y_train)
+    println("TEST DATA")
+    do_test(c, x_test, y_test)
 end

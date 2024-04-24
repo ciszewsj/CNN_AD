@@ -19,9 +19,6 @@ end
 
 function compute!(node::Operator)
     inputs = [input.output for input in node.inputs]
-    # pr(node)
-
-    # println("forward >> ",typeof(node), typeof(inputs), "   size: ", size(inputs))
     node.output = forward(node, inputs...)
     return node.output
 end

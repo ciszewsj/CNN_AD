@@ -4,7 +4,6 @@ import LinearAlgebra: mul!, diagm
 using Printf
 
 reshape(x::GraphNode, new_size::GraphNode) = let 
-    # println(x.name, " = ", x.size, ">>>", new_size.name)
     BroadcastedOperator(reshape, x, new_size)
 end
 
@@ -85,9 +84,6 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
         Jy = diagm(isless.(x, y))
         tuple(Jx' * g, Jy' * g)
     end
-
-# global poprawne = 0
-# global suma2 = 0
     
 
 cross_entropy_loss(y_hat::GraphNode, y::GraphNode) = BroadcastedOperator(cross_entropy_loss, y_hat, y)
@@ -95,17 +91,18 @@ forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) =
     let
         global suma2
         global poprawne
+        global gloss
         suma2 += 1
         if argmax(y_hat) == argmax(y)
             poprawne += 1
         end
-        # println(y_hat, " <> ", y)
         y_hat = y_hat .- maximum(y_hat)
         y_hat = exp.(y_hat) ./ sum(exp.(y_hat))
         loss = sum(log.(y_hat) .* y) * -1.0
-        # @printf("Accuracy: %.5f, Loss: %.5f\n", poprawne/suma2, loss)
+        gloss = loss
         return loss
     end
+
 backward(node::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y, g) =
     let
         y_hat = y_hat .- maximum(y_hat)
@@ -123,8 +120,6 @@ forward(::BroadcastedOperator{typeof(convolution)}, x, w) =
     let
         padding = 0
         stride = 1
-        # println("size x : ",size(x))
-
         if ndims(x)==3
             a, b, c = size(x)
             x1 = reshape(x, a , b, c, 1)

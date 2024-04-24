@@ -10,8 +10,6 @@ include("utils.jl")
 update_weight!(node, learning_rate) = node.output -= learning_rate .* node.gradient
 
 function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
-    # print("\n\n\n======UPDATE HERE ======\n\n\n")
-
     for node in graph
         if isa(node, Variable) && hasproperty(node, :__gradient)
             node.__gradient ./= batch_size
@@ -37,7 +35,7 @@ function do_train(cnn::CNN,
     trainx::Any,
     trainy::Any,
     batch_size)
-	epoch_loss = 0.0
+	epoch_loss::Float64 = 0.0
     for i=1:size(trainx, 3)
         x = Constant(trainx[:, :, i])
         y = Constant(trainy[i, :])

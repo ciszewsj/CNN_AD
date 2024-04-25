@@ -7,11 +7,8 @@ include("brodcasted_operators.jl")
 include("graph.jl")
 include("utils.jl")
 
-update_weight!(node, learning_rate) = node.output -= learning_rate .* node.gradient
 
 function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
-    # print("\n\n\n======UPDATE HERE ======\n\n\n")
-
     for node in graph
         if isa(node, Variable) && hasproperty(node, :__gradient)
             node.__gradient ./= batch_size
@@ -36,7 +33,8 @@ end
 function do_train(cnn::CNN,
     trainx::Any,
     trainy::Any,
-    batch_size)
+    batch_size,
+    lr)
 	epoch_loss = 0.0
     for i=1:size(trainx, 3)
         x = Constant(trainx[:, :, i])
@@ -46,31 +44,28 @@ function do_train(cnn::CNN,
 		epoch_loss += forward!(graph)
 		backward!(graph)
         if i % batch_size == 0
-            update_weights!(graph, 1e-4, batch_size)
+            update_weights!(graph, lr, batch_size)
         end
     end
     return epoch_loss / size(trainx, 3)
 end
-poprawne = 0
-suma2 = 0
+poprawne = 0.0
+suma2 = 0.0
+
 function do_test(cnn::CNN,
     x_data::Any,
     y_data::Any)
-    global poprawne
-    global suma2
-    poprawne = 0
-    suma2 = 0
+    
     for i=1:size(x_data, 3)
         x = Constant(x_data[:, :, i])
         y = Constant(y_data[i, :])
         graph = build_graph(x, y, cnn)
 		forward!(graph)
     end
-    println("   ACCURACY : ", poprawne/suma2)
 end
 
 
-function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, batch_size)
+function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, batch_size, lr)
 	wk1 = Variable(create_kernel(1, 6))
 
     k1 =  Variable(randn(84, 13*13*6), name = "wh")
@@ -83,12 +78,26 @@ function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, ba
 
     i = 1
 
+    global poprawne
+    global suma2
+    poprawne = 0
+    suma2 = 0
+
     for i=1:3
-        epoch_loss = do_train(c, x_train, y_train, batch_size)
+        epoch_loss = do_train(c, x_train, y_train, batch_size, lr)
         println("Epoch " ,i," : ", epoch_loss)
+        println("   ACCURACY : ", poprawne/suma2)
+        poprawne = 0
+        suma2 = 0
     end
-    println("TRAIN DATA")
     do_test(c, x_train, y_train)
-    println("TEST DATA")
+    println("TRAIN DATA")
+    println("   ACCURACY : ", poprawne/suma2)    
+    poprawne = 0
+    suma2 = 0
     do_test(c, x_test, y_test)
+    println("TEST DATA")
+    println("   ACCURACY : ", poprawne/suma2)
+    poprawne = 0
+    suma2 = 0
 end

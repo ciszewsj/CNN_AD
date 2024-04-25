@@ -65,7 +65,15 @@ function do_test(cnn::CNN,
 end
 
 
-function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, batch_size, lr)
+function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, batch_size, lr, epoch)
+    println("RUN CNN")
+    println("   INPUT SIZE  : ", size(x_train))
+    println("   OUTPUT SIZE : ", size(y_train))
+    println("   BATCH SIZE  : ", batch_size)
+    println("   lr          : ", lr)
+    println("   epoch       : ", epoch)
+
+
 	wk1 = Variable(create_kernel(1, 6))
 
     k1 =  Variable(randn(84, 13*13*6), name = "wh")
@@ -83,7 +91,7 @@ function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, ba
     poprawne = 0
     suma2 = 0
 
-    for i=1:3
+    for i=1:epoch
         epoch_loss = do_train(c, x_train, y_train, batch_size, lr)
         println("Epoch " ,i," : ", epoch_loss)
         println("   ACCURACY : ", poprawne/suma2)

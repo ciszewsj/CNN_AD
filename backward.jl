@@ -6,7 +6,7 @@ update!(node::GraphNode, gradient) = begin
     node.gradient = gradient
     if typeof(node) == Variable
         if isnothing(node.__gradient)
-            node.__gradient = gradient
+            node.__gradient = gradient * 0
         else
             node.__gradient .+= gradient
         end

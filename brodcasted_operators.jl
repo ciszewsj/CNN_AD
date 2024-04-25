@@ -4,7 +4,6 @@ import LinearAlgebra: mul!, diagm
 using Printf
 
 reshape(x::GraphNode, new_size::GraphNode) = let 
-    # println(x.name, " = ", x.size, ">>>", new_size.name)
     BroadcastedOperator(reshape, x, new_size)
 end
 
@@ -86,10 +85,6 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
         tuple(Jx' * g, Jy' * g)
     end
 
-# global poprawne = 0
-# global suma2 = 0
-    
-
 cross_entropy_loss(y_hat::GraphNode, y::GraphNode) = BroadcastedOperator(cross_entropy_loss, y_hat, y)
 forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) =
     let
@@ -99,11 +94,9 @@ forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) =
         if argmax(y_hat) == argmax(y)
             poprawne += 1
         end
-        # println(y_hat, " <> ", y)
         y_hat = y_hat .- maximum(y_hat)
         y_hat = exp.(y_hat) ./ sum(exp.(y_hat))
         loss = sum(log.(y_hat) .* y) * -1.0
-        # @printf("Accuracy: %.5f, Loss: %.5f\n", poprawne/suma2, loss)
         return loss
     end
 backward(node::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y, g) =

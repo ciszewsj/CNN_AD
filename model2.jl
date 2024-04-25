@@ -10,8 +10,6 @@ include("utils.jl")
 update_weight!(node, learning_rate) = node.output -= learning_rate .* node.gradient
 
 function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
-    # print("\n\n\n======UPDATE HERE ======\n\n\n")
-
     for node in graph
         if isa(node, Variable) && hasproperty(node, :__gradient)
             node.__gradient ./= batch_size
@@ -26,17 +24,12 @@ suma2 = 0
 function do_test(cnn::CNN2,
     x_data::Any,
     y_data::Any)
-    global poprawne
-    global suma2
-    poprawne = 0
-    suma2 = 0
     for i=1:size(x_data, 3)
         x = Constant(x_data[:, :, i])
         y = Constant(y_data[i, :])
         graph = build_graph(x, y, cnn)
 		forward!(graph)
     end
-    println("   ACCURACY : ", poprawne/suma2)
 end
 
 
@@ -57,7 +50,8 @@ end
 function do_train(cnn::CNN2,
     trainx::Any,
     trainy::Any,
-    batch_size)
+    batch_size,
+    lr)
 	epoch_loss = 0.0
     for i=1:size(trainx, 3)
         x = Constant(trainx[:, :, i])
@@ -67,15 +61,23 @@ function do_train(cnn::CNN2,
 		epoch_loss += forward!(graph)
 		backward!(graph)
         if i % batch_size == 0
-            update_weights!(graph, 1e-4, batch_size)
-            # println(cnn.wb2)
+            update_weights!(graph, lr, batch_size)
         end
     end
     return epoch_loss / size(trainx, 3)
 end
 
 
-function do_magic_trick_2(x_train::Any, y_train::Any, x_test::Any, y_test::Any, batch_size)
+function do_magic_trick_2(x_train::Any, y_train::Any, x_test::Any, y_test::Any,  batch_size, lr, epoch)
+
+    println("RUN CNN")
+    println("   INPUT SIZE  : ", size(x_train))
+    println("   OUTPUT SIZE : ", size(y_train))
+    println("   BATCH SIZE  : ", batch_size)
+    println("   lr          : ", lr)
+    println("   epoch       : ", epoch)
+
+
 	c1 = Variable(create_kernel(1, 6))
 	c2 = Variable(create_kernel(6, 16))
 
@@ -88,16 +90,27 @@ function do_magic_trick_2(x_train::Any, y_train::Any, x_test::Any, y_test::Any, 
     c = CNN2(c1, c2, k1, k2, b1, b2)
 
     i = 1
+    global poprawne
+    global suma2
+    poprawne = 0
+    suma2 = 0
 
-    for i=1:3
-        epoch_loss = do_train(c, x_train, y_train, batch_size)
+    for i=1:epoch
+        epoch_loss = do_train(c, x_train, y_train, batch_size, lr)
         println("Epoch " ,i," : ", epoch_loss)
-        global suma2 = 0
-        global poprawne = 0
+        println("   ACCURACY : ", poprawne/suma2)
+        poprawne = 0
+        suma2 = 0
     end
 
-    println("TRAIN DATA")
     do_test(c, x_train, y_train)
-    println("TEST DATA")
+    println("TRAIN DATA")
+    println("   ACCURACY : ", poprawne/suma2)    
+    poprawne = 0
+    suma2 = 0
     do_test(c, x_test, y_test)
+    println("TEST DATA")
+    println("   ACCURACY : ", poprawne/suma2)
+    poprawne = 0
+    suma2 = 0
 end

@@ -91,7 +91,7 @@ function do_magic_trick(x_train::Any, y_train::Any, x_test::Any, y_test::Any, ba
     poprawne = 0
     suma2 = 0
 
-    for i=1:epoch
+    @time for i=1:epoch
         epoch_loss = do_train(c, x_train, y_train, batch_size, lr)
         println("Epoch " ,i," : ", epoch_loss)
         println("   ACCURACY : ", poprawne/suma2)
